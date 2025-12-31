@@ -447,7 +447,7 @@
     </div>
 
     <div class="nav-left">
-      <a href="/" class="nav-logo" aria-label="Home">
+      <a href="home.html" class="nav-logo" aria-label="Home">
         <img src="assets/favicon.ico" alt="AIRA Logo">
       </a>
     </div>
@@ -478,6 +478,7 @@
               <p>命宫：<span id="minggong"></span></p>
               <p>身宫：<span id="shengong"></span></p>
               <p>命卦：<span id="minggua"></span></p>
+              <p id="demoNotice" class="muted" style="margin-top:6px; display:none;">????????????????????????</p>
               <p class="muted" style="margin-top:6px;">提示：此算法较为详细，以当地经纬度得出真太阳时。</p>
             </div>
 
@@ -728,6 +729,10 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       const r = getResult();
+
+      const hasData = !!(r && (r.standardSolarDate || r.stdSolarDate || r.lunarDate || (r.eightChar && (r.eightChar.year || r.eightChar.month || r.eightChar.day || r.eightChar.time))));
+      const demoNotice = document.getElementById('demoNotice');
+      if (demoNotice) { demoNotice.style.display = hasData ? 'none' : 'block'; }
 
       // === 把当前页面结果写入“共享通道”（关键一行） ===
       saveBaziResult(r);

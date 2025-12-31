@@ -1075,7 +1075,12 @@
 
 
     /************** 发送 **************/
+    const DEMO_NO_BACKEND = true;
     send.addEventListener('click', async function () {
+      if (DEMO_NO_BACKEND) {
+        addMsg('FEI', 'Static demo: backend not deployed. Chat is disabled.', true);
+        return;
+      }
       var provider = $provider.value;
       var model = $model.value;
 

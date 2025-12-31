@@ -175,7 +175,15 @@
 
 
 
-    /* 左上角 Logo 统一样式 */
+    
+    .demo-note {
+      margin-top: 10px;
+      text-align: center;
+      color: rgba(255, 214, 131, 0.85);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+    }
+/* 左上角 Logo 统一样式 */
     .nav-left {
       position: fixed;
       top: 18px;
@@ -329,7 +337,10 @@
       </select>
     </div>
 
-    <div class="submit-container"><button id="submitBtn">submit</button></div>
+    <div class="submit-container">
+      <button id="submitBtn">submit</button>
+      <div class="demo-note">??????????????</div>
+    </div>
   </div>
 
   <script>
@@ -428,6 +439,7 @@
 
       submitBtn.addEventListener('click', e => {
         e.preventDefault();
+        const isDemo = true;
         const params = {
           year: birthYear.value, month: birthMonth.value, day: birthDay.value,
           hour: birthHour.value, minute: birthMinute.value, gender: gender.value,
@@ -437,6 +449,14 @@
         if (!params.year || !params.month || !params.day || !params.birthProvince || (params.gender !== "1" && params.gender !== "0")) {
           return alert('请完整选择“出生年月日”“性别”和“出生省”');
         }
+        if (isDemo) {
+          alert('Static demo: backend not deployed. Results are unavailable.');
+          localStorage.removeItem('baziResult');
+          sessionStorage.removeItem('baziResult');
+          location.href = './result.html';
+          return;
+        }
+
         const qs = new URLSearchParams(params).toString();
         fetch('/analyze', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: qs })
           .then(r => r.json()).then(data => {
