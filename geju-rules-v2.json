@@ -1,0 +1,305 @@
+{
+  "meta": {
+    "version": "2.0",
+    "name": "GEJU Rules – Percent Only",
+    "desc": "十神占比判格：主格/中层/内层/破格，含从格与弃命从势。",
+    "percent_scale": "支持 0–1 或 0–100（由上游归一化）"
+  },
+  "thresholds": {
+    "weakSelf": 16,
+    "strong": 22,
+    "veryStrong": 30,
+    "breaker": 12,
+
+    "outStrong": 24,
+    "wealthOk": 18,
+    "govStrong": 38,
+    "printEnough": 18,
+
+    "innerMin": 12,
+
+    "gsy": {
+      "minOffKill": 30,
+      "minYin": 20,
+      "offAbsStrong": 18,
+      "shaAbsStrong": 18,
+      "offDominantShare": 0.65,
+      "shaDominantShare": 0.65,
+      "mixBand": 8,
+      "offNoiseCap": 10,
+      "shaNoiseCap": 10,
+      "monthBias": 0.05
+    }
+  },
+  "derived": {
+    "self": "比肩+劫财",
+    "out": "食神+伤官",
+    "wealth": "正财+偏财",
+    "off": "正官",
+    "sha": "七杀",
+    "offKill": "正官+七杀",
+    "print": "正印+偏印",
+    "shenYin": "self+print"
+  },
+  "priority": {
+    "order": [
+      "从格体系",
+      "弃命从势",
+      "主格·相生类",
+      "主格·相制类",
+      "主格·清浊与专旺",
+      "中层并行组合",
+      "内层细化提示",
+      "破格提示与并列处理"
+    ]
+  },
+
+  "rules": {
+    "主格": [
+      {
+        "id": "cong_cai",
+        "name": "从财格",
+        "category": "从格体系",
+        "when_all": [
+          "shenYin <= weakSelf",
+          "wealth >= veryStrong",
+          "offKill <= (strong + 8)"
+        ],
+        "break_hints": ["print + self >= breaker"],
+        "score": 100
+      },
+      {
+        "id": "cong_guan",
+        "name": "从官格",
+        "category": "从格体系",
+        "when_all": [
+          "shenYin <= weakSelf",
+          "offKill >= veryStrong",
+          "off >= sha"
+        ],
+        "break_hints": ["shenYin + out >= breaker"],
+        "score": 100
+      },
+      {
+        "id": "cong_sha",
+        "name": "从杀格",
+        "category": "从格体系",
+        "when_all": [
+          "shenYin <= weakSelf",
+          "offKill >= veryStrong",
+          "sha > off"
+        ],
+        "break_hints": ["shenYin + out >= breaker"],
+        "score": 100
+      },
+      {
+        "id": "cong_yin",
+        "name": "从印格",
+        "category": "从格体系",
+        "when_all": [
+          "shenYin <= weakSelf",
+          "print >= veryStrong"
+        ],
+        "break_hints": ["wealth + out >= breaker"],
+        "score": 100
+      },
+      {
+        "id": "cong_er",
+        "name": "从儿格（从食伤）",
+        "category": "从格体系",
+        "when_all": [
+          "shenYin <= weakSelf",
+          "out >= veryStrong"
+        ],
+        "notes": ["若同时 wealth >= strong → 标注承接良好"],
+        "break_hints": ["offKill + print + self >= breaker"],
+        "score": 100
+      },
+      {
+        "id": "follow_ss_cai",
+        "name": "弃命从势·食伤→财",
+        "category": "弃命从势",
+        "when_all": [
+          "shenYin <= weakSelf",
+          "out >= strong",
+          "wealth >= strong"
+        ],
+        "break_hints": ["shenYin >= breaker"],
+        "score": 95
+      },
+      {
+        "id": "follow_cai_off",
+        "name": "弃命从势·财→官杀",
+        "category": "弃命从势",
+        "when_all": [
+          "shenYin <= weakSelf",
+          "wealth >= strong",
+          "offKill >= strong"
+        ],
+        "break_hints": ["shenYin >= breaker"],
+        "score": 95
+      },
+
+      {
+        "id": "gy_off_yin",
+        "name": "官印相生",
+        "category": "主格·相生类",
+        "when_any_block": [
+          {
+            "all": ["offKill >= gsy.minOffKill", "print >= gsy.minYin", "off >= sha", "off >= gsy.offAbsStrong"]
+          },
+          {
+            "all": ["offKill >= gsy.minOffKill", "print >= gsy.minYin", "abs(off - sha) <= gsy.mixBand"]
+          }
+        ],
+        "score": 90
+      },
+      {
+        "id": "gy_sha_yin",
+        "name": "杀印相生",
+        "category": "主格·相生类",
+        "when_any_block": [
+          {
+            "all": ["offKill >= gsy.minOffKill", "print >= gsy.minYin", "sha > off", "sha >= gsy.shaAbsStrong"]
+          },
+          {
+            "all": ["offKill >= gsy.minOffKill", "print >= gsy.minYin", "abs(off - sha) <= gsy.mixBand", "sha >= off"]
+          }
+        ],
+        "score": 90
+      },
+      {
+        "id": "ss_cai",
+        "name": "食伤生财",
+        "category": "主格·相生类",
+        "when_all": ["out >= outStrong", "wealth >= wealthOk", "out + wealth >= 45", "offKill <= 15"],
+        "score": 85,
+        "variants": [
+          {"name":"食神生财","when":"食神 >= 伤官 && 食神 >= wealth"},
+          {"name":"伤官生财","when":"伤官 > 食神 && 伤官 >= wealth"}
+        ]
+      },
+      {
+        "id": "shang_pei_yin",
+        "name": "伤官佩印",
+        "category": "主格·相生类",
+        "when_all": ["伤官 >= 20", "print >= 20", "伤官 + print >= 45", "offKill <= 15"],
+        "score": 82,
+        "variants": [
+          {"name":"印制伤官","when":"print > 伤官"},
+          {"name":"伤官制印","when":"伤官 > print"}
+        ]
+      },
+      {
+        "id": "cai_sheng_guan",
+        "name": "财生官",
+        "category": "主格·相生类",
+        "when_all": ["wealth >= 26", "offKill >= 14"],
+        "score": 80
+      },
+
+      {
+        "id": "off_sha_mixed",
+        "name": "官杀混杂",
+        "category": "主格·清浊与专旺",
+        "when_all": ["offKill >= 35", "abs(off - sha) <= 10", "print <= 15"],
+        "score": 78
+      },
+      {
+        "id": "sha_no_control",
+        "name": "杀多无制",
+        "category": "主格·清浊与专旺",
+        "when_all": ["sha >= 35", "print <= 10", "食神 <= 15"],
+        "score": 78
+      },
+      {
+        "id": "cai_guan_double",
+        "name": "财官双美",
+        "category": "主格·清浊与专旺",
+        "when_all": ["wealth >= 20", "off >= 20", "wealth + off >= 45", "print <= 10"],
+        "score": 76
+      },
+      {
+        "id": "yin_dominant",
+        "name": "印绶格（印多）",
+        "category": "主格·清浊与专旺",
+        "when_all": ["print >= 35", "offKill <= 15", "wealth <= 15"],
+        "score": 74,
+        "variants": [
+          {"name":"正印格","when":"正印 > 偏印"},
+          {"name":"偏印格","when":"偏印 >= 正印"}
+        ]
+      },
+      {
+        "id": "zhuan_wang",
+        "name": "专旺格",
+        "category": "主格·清浊与专旺",
+        "when_all": ["max(十神各项) >= 50", "second_max(十神各项) <= 15"],
+        "score": 74
+      }
+    ],
+
+    "中层并行组合": [
+      { "id": "ss_ctrl_sha", "name": "食神制杀", "when_all": ["食神 >= 14", "sha >= 12"], "score": 76 },
+      { "id": "shang_ctrl_sha", "name": "伤官制杀/见官", "when_all": ["伤官 >= 14", "offKill >= 16"], "score": 76 },
+      { "id": "cai_puo_yin", "name": "财破印", "when_all": ["wealth >= 24", "print <= 12"], "score": 72 },
+      { "id": "yin_over", "name": "印绶过旺", "when_all": ["print >= 46", "out + wealth <= 22"], "score": 70 },
+      { "id": "bi_jie_duo_cai", "name": "比劫夺财", "when_all": ["self > wealth + 8", "wealth >= innerMin"], "score": 68 },
+      { "id": "shen_ruo_cai_duo", "name": "身弱财多", "when_all": ["shenYin <= weakSelf", "wealth >= strong"], "score": 66 },
+      { "id": "shen_qiang_cai_ruo", "name": "身强财弱", "when_all": ["shenYin >= 46", "wealth <= 14"], "score": 64 },
+      { "id": "yin_hu_guan", "name": "印护官", "when_all": ["off >= 18", "print >= 18", "sha <= 12"], "score": 64 },
+      { "id": "yin_hu_sha", "name": "印护杀", "when_all": ["sha >= 18", "print >= 20"], "score": 64 },
+      { "id": "out_xie_yin", "name": "食伤泄印", "when_all": ["print >= 30", "out >= 22"], "score": 60 },
+      { "id": "xiao_yin_duo_shi", "name": "枭印夺食", "when_all": ["偏印 >= 18", "食神 <= 10", "正印 <= 12"], "score": 60 },
+      { "id": "bi_jie_zhu_yin", "name": "比劫助印", "when_all": ["self >= 20", "print >= 20", "wealth <= 14"], "score": 60 }
+    ],
+
+    "内层细化提示": [
+      { "id": "tip_shang_jian_guan", "name": "伤官见官", "when_all": ["伤官 >= innerMin", "offKill >= innerMin"] },
+      { "id": "tip_out_with_print", "name": "伤官/食神配印", "when_all": ["(伤官 >= innerMin OR 食神 >= innerMin)", "print >= innerMin - 2"] },
+      { "id": "tip_off_sha_mixed", "name": "官杀混杂", "when_all": ["off >= innerMin", "sha >= innerMin"] },
+      { "id": "tip_ss_ctrl_sha", "name": "食神制杀", "when_all": ["食神 >= innerMin + 2", "sha >= innerMin + 2"] },
+      { "id": "tip_shang_ctrl_sha", "name": "伤官制杀", "when_all": ["伤官 >= innerMin + 2", "sha >= innerMin + 2"] },
+      { "id": "tip_bj_duo_cai", "name": "比劫夺财", "when_all": ["self > wealth + 8", "wealth >= innerMin"] },
+      { "id": "tip_yin_over_sick", "name": "印多成病（需泄化）", "when_all": ["print >= 46", "out + wealth <= 22"] }
+    ]
+  },
+
+  "tie_breakers": {
+    "dominant_combo_first": "若多条主格同时满足，取分数最高者；分数相同则取覆盖更大者（组合占比更高）。",
+    "dual_label": "若两个主格分差 ≤ 5 且条件重叠度高（如 官印相生 与 财生官），允许并列显示主格与副格。",
+    "outer_hint_override": "上游若提供 outerHint（如“杂气正印格”），直接覆盖外层展示。",
+    "month_bias": "若提供 monthHint: '官'|'杀'，仅用于官/杀×印细分的偏置，不影响其他规则。"
+  },
+
+  "trigramsByBits": {
+    "111":"乾","110":"兑","101":"离","100":"震","011":"巽","010":"坎","001":"艮","000":"坤"
+  },
+  "hexagrams": [
+    { "id": 1, "name": "乾为天", "upper": "乾", "lower": "乾", "palace":"乾", "shi": 2, "ying": 5 },
+    { "id": 2, "name": "坤为地", "upper": "坤", "lower": "坤", "palace":"坤", "shi": 2, "ying": 5 }
+    
+  ],
+  "shiYingByName": {
+    "乾为天": { "shi": 2, "ying": 5 },
+    "坤为地": { "shi": 2, "ying": 5 }
+    
+  },
+  "najia": {
+    "乾": ["子","寅","辰"],    "兑": ["巳","卯","丑"],
+    "离": ["午","辰","寅"],    "震": ["卯","丑","亥"],
+    "巽": ["辰","寅","子"],    "坎": ["子","戌","申"],
+    "艮": ["丑","亥","酉"],    "坤": ["未","巳","卯"]
+   
+  },
+  "branches": {
+    "子": { "wuxing":"水" }, "丑": { "wuxing":"土" } 
+  },
+  "liushenStartByDayBranch": {
+    "子":0,"丑":1,"寅":2,"卯":3,"辰":4,"巳":5,"午":0,"未":1,"申":2,"酉":3,"戌":4,"亥":5
+  },
+  "liuqinByWuxing": {
+    "木": { "木":"兄弟","火":"子孙","土":"财","金":"官鬼","水":"父母" },
+    "火": { "火":"兄弟","土":"子孙","金":"财","水":"官鬼","木":"父母" }
+  }
+}

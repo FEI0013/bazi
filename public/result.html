@@ -1,0 +1,894 @@
+=
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIRA</title>
+  <style>
+    :root {
+      --bg: #080808;
+      --panel-bg: rgba(18, 18, 18, .66);
+      --panel-border: rgba(255, 255, 255, .16);
+      --text: #E9E4D6;
+      --muted: #d3b471;
+      --gold-1: #ffc64c;
+      --gold-2: #D0A24A;
+      --gold-3: #8C5E1A;
+      --gold-soft: rgba(214, 160, 60, 0.28);
+      --shadow: 0 12px 36px rgba(0, 0, 0, .48);
+      --radius: 14px;
+
+      /* 滚动条配色 */
+      --scroll-track: rgba(255, 255, 255, .06);
+      --scroll-thumb: linear-gradient(180deg, #F1C56A, #D0A24A 55%, #8C5E1A);
+      --tabs-top-gap: 14px;
+      /* 或 12~18px，按你视觉微调 */
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* ====== 全局：把滚动交回 body，避免“半屏” ====== */
+    html,
+    body {
+      width: 100%;
+      min-height: 100vh;
+      height: auto;
+      /* 由内容决定高度 */
+      color: var(--text);
+      font: 14px/1.6 "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      overflow-y: auto;
+      /* ✅ 允许整页滚动 */
+      overflow-x: hidden;
+    }
+
+    body {
+      background:
+        radial-gradient(1200px 700px at 65% -10%, rgba(190, 155, 80, .10), rgba(0, 0, 0, 0) 60%),
+        radial-gradient(900px 600px at 15% 110%, rgba(70, 70, 120, .08), rgba(0, 0, 0, 0) 60%),
+        var(--bg);
+    }
+
+    /* 顶部导航 */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: linear-gradient(180deg, rgba(0, 0, 0, .75), rgba(0, 0, 0, .25));
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, .12);
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--gold-1);
+    }
+
+    /* 内容区：首屏至少=视高，避免“塌到半屏” */
+    .content {
+      position: relative;
+      z-index: 3;
+      min-height: calc(100vh - 64px);
+      /* ✅ 导航高度 64px */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .content-inner {
+      padding-top: 84px;
+      width: 100%;
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      overflow: visible;
+      /* ✅ 不要拦截滚动 */
+    }
+
+    /* 面板：取消内层固定高与滚动，让它随内容自然增长 */
+    .panel {
+      width: min(1600px, 98%);
+      height: auto;
+      /* ✅ 由内容决定高度 */
+      margin: 0 auto 16px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: visible;
+      /* ✅ 滚动交给 body */
+      padding: 18px;
+    }
+
+    .section {
+      margin: 12px 6px 18px;
+    }
+
+    .section h2 {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 1.05rem;
+      font-weight: 800;
+    }
+
+    .section h2::before {
+      content: "";
+      width: 6px;
+      height: 16px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, var(--gold-1), rgba(208, 162, 74, .35));
+    }
+
+    .data {
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, .03);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 10px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .chat {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .chat:hover {
+      color: var(--gold-1);
+    }
+
+    .wx-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 8px 0;
+    }
+
+    .wx-label {
+      width: 24px;
+      text-align: center;
+    }
+
+    .wx-bar {
+      flex: 1;
+      height: 12px;
+      background: #2a2a2a;
+      border-radius: 999px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .wx-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, #F1C56A, #8C5E1A);
+      box-shadow: inset 0 0 12px rgba(208, 162, 74, .28);
+    }
+
+    .wx-right {
+      width: 72px;
+      text-align: right;
+      color: #E7D7B5;
+      font-weight: 700;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 10px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, .12);
+    }
+
+    th {
+      background: rgba(208, 162, 74, .18);
+      text-align: left;
+    }
+
+    td {
+      background: rgba(255, 255, 255, .03);
+    }
+
+    .chart-wrap {
+      margin-top: 10px;
+      background: rgba(255, 255, 255, .03);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .bar-canvas {
+      width: 100%;
+      height: 280px;
+      display: block;
+    }
+
+    /* 只给 body 做滚动条美化（避免内层也出现滚动条） */
+    body {
+      scrollbar-width: thin;
+      scrollbar-color: #B88A3C rgba(255, 255, 255, .06);
+    }
+
+    body::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    body::-webkit-scrollbar-track {
+      background: var(--scroll-track);
+      border-radius: 999px;
+    }
+
+    body::-webkit-scrollbar-thumb {
+      background-image: var(--scroll-thumb);
+      border-radius: 999px;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35), 0 0 10px rgba(208, 162, 74, .25);
+    }
+
+    body::-webkit-scrollbar-thumb:hover {
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .4), 0 0 14px rgba(208, 162, 74, .36);
+    }
+
+    .nav-left {
+      position: fixed;
+      top: 18px;
+      left: 24px;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+    }
+
+    .nav-left .nav-logo img {
+      width: 28px;
+      height: 28px;
+      display: block;
+    }
+
+    .nav-right-link {
+      position: fixed;
+      top: 18px;
+      right: 24px;
+      z-index: 1000;
+      color: #f5f5f5;
+      text-decoration: none;
+      font-size: .95rem;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      opacity: .92;
+      padding-bottom: 4px;
+      transition: opacity .25s ease, color .3s ease;
+    }
+
+    .nav-right-link:hover {
+      opacity: 1;
+      color: #ffd580;
+    }
+
+    .nav-right-link::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, #ffcc66, #ff9900);
+      transform: scaleX(0);
+      transform-origin: right;
+      transition: transform .35s ease;
+      box-shadow: 0 0 12px rgba(255, 200, 100, .7);
+    }
+
+    .nav-right-link:hover::after {
+      transform: scaleX(1);
+      transform-origin: left;
+    }
+
+    #effectCanvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* 顶部标签栏 */
+    .tabs-bar {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: var(--tabs-top-gap);
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      height: 36px;
+      padding: 0 8px;
+      background: linear-gradient(180deg, rgba(0, 0, 0, .28), rgba(0, 0, 0, .10));
+      border: 1px solid rgba(255, 255, 255, .06);
+      border-radius: 10px;
+      backdrop-filter: blur(4px);
+    }
+
+    .tab-btn {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      color: #D9D2C0;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      padding: 6px 10px;
+      position: relative;
+      opacity: .92;
+    }
+
+    .tab-btn:hover {
+      opacity: 1;
+    }
+
+    .tab-btn.active {
+      color: #F4C973;
+    }
+
+    .tab-btn.active::after {
+      content: "";
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: -6px;
+      height: 2px;
+      background: linear-gradient(90deg, #F4C973, #C99940);
+      border-radius: 2px;
+      box-shadow: 0 0 8px rgba(244, 201, 115, .35);
+    }
+
+    /* 面板显隐 */
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* 六爻容器 */
+    #tab-liuyao .container-wide {
+      padding: 0 !important;
+    }
+
+
+    /* 如果需要保留“内嵌页四周无多余内边距”的效果： */
+    .liuyao-wrap.panel {
+      padding: 18px;
+      overflow: visible;
+    }
+
+    /* 与 .panel 统一 */
+    #liuyaoFrame {
+      display: block;
+      width: 100%;
+      min-height: 820px;
+      /* 保底高度，可按需调大 */
+      border: 0;
+      background: rgba(0, 0, 0, .25);
+    }
+
+    @media (max-width: 768px) {
+      .tabs-bar {
+        left: 12px;
+        right: 12px;
+        transform: none;
+      }
+
+      #liuyaoFrame {
+        height: 520px;
+      }
+    }
+
+    /* 让 liuyao 这页的外层“卡片”不再绘制一层边框与阴影，避免双容器 */
+    #tab-liuyao .liuyao-wrap {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      /* 让内边距也交给子页控制 */
+    }
+
+    /* 内容宽度与上下外距（这样就和八字页的整体气质一致，也和导航有距离） */
+    #tab-liuyao .container-wide {
+      max-width: var(--content-max);
+      margin: 24px auto !important;
+      /* 顶部留白 */
+      padding: 0 12px;
+    }
+
+    /* iframe 自己铺满父容器；高度还是走 postMessage 自适应 */
+    #liuyaoFrame {
+      display: block;
+      width: 100%;
+      border: 0;
+      background: transparent;
+    }
+  </style>
+
+</head>
+
+<body>
+  <header class="nav" role="navigation" aria-label="主导航">
+    <div class="tabs-bar" id="tabsBar">
+      <button class="tab-btn" data-tab="bazi" aria-controls="tab-bazi" aria-selected="true">八字命盘</button>
+      <button class="tab-btn" data-tab="liuyao" aria-controls="tab-liuyao" aria-selected="false">六爻卦</button>
+    </div>
+
+    <div class="nav-left">
+      <a href="/" class="nav-logo" aria-label="Home">
+        <img src="assets/favicon.ico" alt="AIRA Logo">
+      </a>
+    </div>
+
+    <a href="chat.html" class="nav-right-link">解析命盘</a>
+  </header>
+
+  <!-- 建议把画布放到 header 外 -->
+  <canvas id="effectCanvas"></canvas>
+
+
+  <section id="tab-bazi" class="tab-panel active">
+    <div class="content">
+      <div class="content-inner">
+        <div class="panel">
+          <div class="section">
+            <h2>基本信息</h2>
+            <div class="data">
+              <p>北京时间：<span id="std"></span></p>
+              <p>真太阳时：<span id="true"></span> <span id="trueShift" class="muted"></span></p>
+              <p>农历日期：<span id="lunar"></span></p>
+              <p>八字：<span id="bz"></span></p>
+              <p>出生地：<span id="birth"></span></p>
+              <p>现居地：<span id="curr"></span></p>
+              <p>出生节气：<span id="jieqi"></span></p>
+              <p>胎元：<span id="taiyuan"></span></p>
+              <p>胎息：<span id="taixi"></span></p>
+              <p>命宫：<span id="minggong"></span></p>
+              <p>身宫：<span id="shengong"></span></p>
+              <p>命卦：<span id="minggua"></span></p>
+              <p class="muted" style="margin-top:6px;">提示：此算法较为详细，以当地经纬度得出真太阳时。</p>
+            </div>
+
+            <div class="section">
+              <h2>命盘</h2>
+              <div class="data">
+                <table id="mp">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>年柱</th>
+                      <th>月柱</th>
+                      <th>日柱</th>
+                      <th>时柱</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>五行</td>
+                      <td id="ywx"></td>
+                      <td id="mwx"></td>
+                      <td id="dwx"></td>
+                      <td id="twx"></td>
+                    </tr>
+                    <tr>
+                      <td>天干</td>
+                      <td id="yg"></td>
+                      <td id="mg"></td>
+                      <td id="dg"></td>
+                      <td id="tg"></td>
+                    </tr>
+                    <tr>
+                      <td>地支</td>
+                      <td id="yz"></td>
+                      <td id="mz"></td>
+                      <td id="dz"></td>
+                      <td id="tz"></td>
+                    </tr>
+                    <tr>
+                      <td>藏干</td>
+                      <td id="ycg"></td>
+                      <td id="mcg"></td>
+                      <td id="dcg"></td>
+                      <td id="tcg"></td>
+                    </tr>
+                    <tr>
+                      <td>十神(干)</td>
+                      <td id="ysg"></td>
+                      <td id="msg"></td>
+                      <td id="dsg"></td>
+                      <td id="tsg"></td>
+                    </tr>
+                    <tr>
+                      <td>十神(支)</td>
+                      <td id="ysz"></td>
+                      <td id="msz"></td>
+                      <td id="dsz"></td>
+                      <td id="tsz"></td>
+                    </tr>
+                    <tr>
+                      <td>纳音</td>
+                      <td id="yny"></td>
+                      <td id="mny"></td>
+                      <td id="dny"></td>
+                      <td id="tny"></td>
+                    </tr>
+                    <tr>
+                      <td>地势</td>
+                      <td id="ydi"></td>
+                      <td id="mdi"></td>
+                      <td id="ddi"></td>
+                      <td id="tdi"></td>
+                    </tr>
+                    <tr>
+                      <td>自坐</td>
+                      <td id="yzz"></td>
+                      <td id="mzz"></td>
+                      <td id="dzz"></td>
+                      <td id="tzz"></td>
+                    </tr>
+                    <tr>
+                      <td>空亡</td>
+                      <td id="yxk"></td>
+                      <td id="mxk"></td>
+                      <td id="dxk"></td>
+                      <td id="txk"></td>
+                    </tr>
+                    <tr>
+                      <td>旬</td>
+                      <td id="yxu"></td>
+                      <td id="mxu"></td>
+                      <td id="dxu"></td>
+                      <td id="txu"></td>
+                    </tr>
+                    <tr>
+                      <td>神煞（分柱）</td>
+                      <td id="yss"></td>
+                      <td id="mss"></td>
+                      <td id="dss"></td>
+                      <td id="tss"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2>五行分布 <span class="muted">（按：天干=1，地支=藏干权重）</span></h2>
+              <div class="data">
+                <div id="wxBars"></div>
+                <div class="muted" id="wxRight"></div>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2>十神（10类·百分比）</h2>
+              <div class="data" id="ssText"></div>
+              <div class="chart-wrap"><canvas id="ssChart" class="bar-canvas"></canvas></div>
+            </div>
+
+            <div class="section">
+              <h2>格局分析</h2>
+              <div class="data" id="gejuBox">
+                <p id="gejuOuter" style="margin-bottom:6px;"></p>
+                <p id="gejuMiddle"></p>
+                <div id="gejuMore" class="muted" style="margin-top:6px;"></div>
+                <div id="gejuInner" style="margin-top:8px;"></div>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2>大运</h2>
+              <div class="data">
+                <table id="dayun">
+                  <thead>
+                    <tr>
+                      <th>起始年份</th>
+                      <th>起始年龄</th>
+                      <th>干支</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2>流年</h2>
+              <div class="data">
+                <table id="liunian">
+                  <thead>
+                    <tr>
+                      <th>年份</th>
+                      <th>年龄</th>
+                      <th>干支</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+  </section>
+
+  <section id="tab-liuyao" class="tab-panel">
+    <div class="container-wide">
+      <div class="panel liuyao-wrap"> <!-- 这里用 panel -->
+        <iframe id="liuyaoFrame" src="yaogua.html" title="六爻卦"></iframe>
+      </div>
+    </div>
+  </section>
+
+
+
+
+
+  <!-- 光粒子 -->
+  <script>
+    (function () {
+      const cvs = document.getElementById('effectCanvas'); if (!cvs) return;
+      const ctx = cvs.getContext('2d'); let W = 0, H = 0;
+      function resize() { W = cvs.width = innerWidth; H = cvs.height = innerHeight; } addEventListener('resize', resize); resize();
+      const N = 600, ps = Array.from({ length: N }, () => ({ x: W / 2, y: H / 2, vx: 0, vy: 0, life: 0, size: Math.random() * 2 + 1 }));
+      let mx = W / 2, my = H / 2; addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+      function update() {
+        ps.forEach(p => {
+          if (p.life <= 0) { p.x = mx; p.y = my; const a = Math.random() * Math.PI * 2, s = Math.random() * 3 + 1; p.vx = Math.cos(a) * s; p.vy = Math.sin(a) * s; p.life = Math.random() * 100 + 50; }
+          p.x += p.vx; p.y += p.vy; p.life--;
+        });
+      }
+      function draw() {
+        ctx.clearRect(0, 0, W, H); ctx.globalCompositeOperation = 'lighter';
+        ps.forEach(p => { const a = Math.min(1, p.life / 150); ctx.fillStyle = `rgba(255,200,100,${a * 0.6})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); });
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      (function loop() { update(); draw(); requestAnimationFrame(loop); })();
+    })();
+  </script>
+
+  <!-- ===== 共享：保存到 localStorage + 广播给 chat ===== -->
+  <script>
+    const BAZI_RESULT_KEY = 'bazi:lastResult:v1';
+    function normalizeBaziResult(raw) {
+      const d = raw || {};
+      return {
+        meta: {
+          solarDate: d?.meta?.solarDate ?? d.standardSolarDate ?? d.stdSolarDate ?? d.solarDate ?? '',
+          lunarDate: d?.meta?.lunarDate ?? d.lunarDate ?? '',
+          eightChar: {
+            year: d?.meta?.eightChar?.year ?? d?.eightChar?.year ?? '',
+            month: d?.meta?.eightChar?.month ?? d?.eightChar?.month ?? '',
+            day: d?.meta?.eightChar?.day ?? d?.eightChar?.day ?? '',
+            time: d?.meta?.eightChar?.time ?? d?.eightChar?.time ?? ''
+          },
+          birthLocation: d?.meta?.birthLocation ?? d.birthLocation ?? '',
+          currentLocation: d?.meta?.currentLocation ?? d.currentLocation ?? ''
+        },
+        wuXing: d.wuXing ?? { 木: 0, 火: 0, 土: 0, 金: 0, 水: 0 },
+        shiShen: d.shiShen ?? d.shiShen10w ?? {},
+        geJu: d.geJu ?? d.geju ?? '',
+        zodiac: d.zodiac ?? '',
+        naYin: d.naYin ?? { year: '', month: '', day: '', time: '' },
+        daYun: Array.isArray(d.daYun) ? d.daYun : [],
+        liuNian: Array.isArray(d.liuNian) ? d.liuNian : []
+      };
+    }
+    function saveBaziResult(obj) {
+      const data = normalizeBaziResult(obj);
+      localStorage.setItem(BAZI_RESULT_KEY, JSON.stringify(data));
+      sessionStorage.setItem(BAZI_RESULT_KEY, JSON.stringify(data));
+      try { const bc = new BroadcastChannel('bazi-channel'); bc.postMessage({ type: 'bazi_result_updated', payload: data }); bc.close(); } catch { }
+      return data;
+    }
+  </script>
+
+  <!-- ===== 你的原有渲染逻辑（末尾会新增 saveBaziResult 调用） ===== -->
+  <script>
+    function getResult() {
+      let raw = localStorage.getItem('baziResult') || sessionStorage.getItem('baziResult') || '';
+      if (raw && typeof raw === 'string') { const i = raw.indexOf('{'); if (i > 0) raw = raw.slice(i); }
+      try { const obj = JSON.parse(raw || '{}'); const o = obj.data || obj.result || obj.payload || obj; return o || {}; }
+      catch (e) { return {}; }
+    }
+    const ORDER_WX = ['金', '水', '木', '火', '土'];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const r = getResult();
+
+      // === 把当前页面结果写入“共享通道”（关键一行） ===
+      saveBaziResult(r);
+
+      // ====== 以下保持你原渲染逻辑不动 ======
+      std.textContent = r.standardSolarDate || r.stdSolarDate || '—';
+      (document.getElementById('trueSolarDate') || document.getElementById('true')).textContent = r.trueSolarDate || r.solarDate || '—';
+      const shift = Number(r.trueSolarShiftMinutes || 0); trueShift.textContent = shift ? `（校正${shift > 0 ? '+' : ''}${shift}分）` : '';
+      lunar.textContent = r.lunarDate || '—';
+      bz.textContent = [r.eightChar?.year, r.eightChar?.month, r.eightChar?.day, r.eightChar?.time].filter(Boolean).join(' ');
+      birth.textContent = r.birthLocation || '—';
+      curr.textContent = r.currentLocation || '—';
+
+      jieqi.textContent = r.jieQi || r.jieqi || '—';
+      taiyuan.textContent = r.taiYuan || r.taiyuan || '—';
+      taixi.textContent = r.taiXi || r.taixi || '—';
+      minggong.textContent = r.mingGong || r.minggong || '—';
+      shengong.textContent = r.shenGong || r.shengong || '—';
+      minggua.textContent = r.mingGua || r.minggua || '—';
+
+      const mp = r.mingPan || {};
+      ywx.textContent = mp.year?.wuXingPair || '—'; mwx.textContent = mp.month?.wuXingPair || '—'; dwx.textContent = mp.day?.wuXingPair || '—'; twx.textContent = mp.time?.wuXingPair || '—';
+      yg.textContent = mp.year?.gan || '—'; mg.textContent = mp.month?.gan || '—'; dg.textContent = mp.day?.gan || '—'; tg.textContent = mp.time?.gan || '—';
+      yz.textContent = mp.year?.zhi || '—'; mz.textContent = mp.month?.zhi || '—'; dz.textContent = mp.day?.zhi || '—'; tz.textContent = mp.time?.zhi || '—';
+      ysg.textContent = mp.year?.shiShenGan || '—'; msg.textContent = mp.month?.shiShenGan || '—'; dsg.textContent = mp.day?.shiShenGan || '—'; tsg.textContent = mp.time?.shiShenGan || '—';
+
+      function joinSSZ(v) { return Array.isArray(v) ? v.join('、') : (v || '—'); }
+      ysz.textContent = joinSSZ(mp.year?.shiShenZhi); msz.textContent = joinSSZ(mp.month?.shiShenZhi); dsz.textContent = joinSSZ(mp.day?.shiShenZhi); tsz.textContent = joinSSZ(mp.time?.shiShenZhi);
+
+      ycg.textContent = mp.year?.cangGan || '—'; mcg.textContent = mp.month?.cangGan || '—'; dcg.textContent = mp.day?.cangGan || '—'; tcg.textContent = mp.time?.cangGan || '—';
+      yny.textContent = mp.year?.naYin || '—'; mny.textContent = mp.month?.naYin || '—'; dny.textContent = mp.day?.naYin || '—'; tny.textContent = mp.time?.naYin || '—';
+
+      ydi.textContent = mp.year?.diShi || '—'; mdi.textContent = mp.month?.diShi || '—'; ddi.textContent = mp.day?.diShi || '—'; tdi.textContent = mp.time?.diShi || '—';
+      yzz.textContent = mp.year?.ziZuo || '—'; mzz.textContent = mp.month?.ziZuo || '—'; dzz.textContent = mp.day?.ziZuo || '—'; tzz.textContent = mp.time?.ziZuo || '—';
+
+      yxk.textContent = mp.year?.xunKong || '—'; mxk.textContent = mp.month?.xunKong || '—'; dxk.textContent = mp.day?.xunKong || '—'; txk.textContent = mp.time?.xunKong || '—';
+      yxu.textContent = mp.year?.xun || '—'; mxu.textContent = mp.month?.xun || '—'; dxu.textContent = mp.day?.xun || '—'; txu.textContent = mp.time?.xun || '—';
+
+      yss.textContent = (mp.year?.shenSha || '') || '—';
+      mss.textContent = (mp.month?.shenSha || '') || '—';
+      dss.textContent = (mp.day?.shenSha || '') || '—';
+      tss.textContent = (mp.time?.shenSha || '') || '—';
+
+      const wx = r.wuXing || {}; const bars = document.getElementById('wxBars'); bars.innerHTML = '';
+      ORDER_WX.forEach(k => {
+        const v = Number(wx[k] || 0);
+        const row = document.createElement('div'); row.className = 'wx-row';
+        row.innerHTML = `<div class="wx-label">${k}</div>
+            <div class="wx-bar"><div class="wx-fill" style="width:${Math.max(0, Math.min(100, v))}%"></div></div>
+            <div class="wx-right">${v.toFixed(2)}%</div>`;
+        bars.appendChild(row);
+      });
+      const c5 = r.shiShen5Count || {};
+      wxRight.textContent = ['官杀', '印', '比劫', '食伤', '财'].map(k => `${c5[k] || 0}个${k === '印' ? '印星' : k === '财' ? '财星' : k}`).join('　');
+
+      const ssMap = r.shiShen10w || r.shiShen || {};
+      ssText.innerHTML = Object.entries(ssMap).filter(([, v]) => Number(v) > 0).map(([k, v]) => `<p>${k}：${Number(v).toFixed(2)}%</p>`).join('') || '—';
+      drawBarChart(document.getElementById('ssChart'), ssMap);
+
+      (function renderGeJu() {
+        var g = r && r.geju, box = document.getElementById('gejuBox');
+        if (!box) return; if (!g) { box.innerHTML = '<p class="muted">未计算格局（后端需返回 geju 字段）。</p>'; return; }
+        var o = g.outer || {}, m = g.middlePrimary || {}, arr = Array.isArray(g.middleAll) ? g.middleAll : [], inner = Array.isArray(g.inner) ? g.inner : [];
+        gejuOuter.innerHTML = '<strong>外层：</strong>' + (o.label || '—') + ' <span class="muted">' + (o.reason || '') + '</span>';
+        gejuMiddle.innerHTML = '<strong>中层：</strong>' + (m.label || '—') + ' <span class="muted">' + (m.reason || '') + '</span>';
+        gejuMore.innerHTML = (arr.length > 1) ? ('<div style="margin-top:4px"><strong>并行组合：</strong><ul style="margin:6px 0 0 18px;">' + arr.slice(1, 5).map(x => '<li>' + x.label + '<span class="muted"> · ' + (x.reason || '') + '</span></li>').join('') + '</ul></div>') : '';
+        gejuInner.innerHTML = inner.length ? ('<strong>内层细化：</strong>' + inner.map(x => '<span style="display:inline-block;margin-right:10px">' + x + '</span>').join('')) : '';
+      })();
+
+      const dyArr = Array.isArray(r.daYun) ? r.daYun : [], dyBody = document.querySelector('#dayun tbody');
+      if (dyArr.length) { dyArr.forEach(dy => { const tr = document.createElement('tr'); tr.innerHTML = `<td>${dy.startYear ?? '—'}</td><td>${dy.startAge ?? '—'}</td><td>${dy.ganZhi ?? '—'}</td>`; dyBody.appendChild(tr); }); }
+      else dyBody.innerHTML = '<tr><td colspan="3">无数据</td></tr>';
+
+      const lnArr = Array.isArray(r.liuNian) ? r.liuNian : [], lnBody = document.querySelector('#liunian tbody');
+      if (lnArr.length) { lnArr.forEach(ln => { const tr = document.createElement('tr'); tr.innerHTML = `<td>${ln.year ?? '—'}</td><td>${ln.age ?? '—'}</td><td>${ln.ganZhi ?? '—'}</td>`; lnBody.appendChild(tr); }); }
+      else lnBody.innerHTML = '<tr><td colspan="3">无数据</td></tr>';
+    });
+
+    function drawBarChart(canvas, map) {
+      const items = Object.entries(map).map(([label, val]) => ({ label, value: Number(val) || 0 }));
+      const cfg = { max: 100, pad: { t: 22, r: 18, b: 48, l: 54 }, gap: 12, radius: 8 }; const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const w = canvas.clientWidth, h = canvas.clientHeight; canvas.width = Math.floor(w * dpr); canvas.height = Math.floor(h * dpr);
+      const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr); const plotW = w - cfg.pad.l - cfg.pad.r, plotH = h - cfg.pad.t - cfg.pad.b;
+      ctx.clearRect(0, 0, w, h); ctx.strokeStyle = 'rgba(208,162,74,.22)'; ctx.fillStyle = '#C7A66A'; ctx.font = '12px "Segoe UI"'; ctx.textBaseline = 'middle';
+      [0, 25, 50, 75, 100].forEach(t => { const y = cfg.pad.t + (1 - t / 100) * plotH; ctx.beginPath(); ctx.moveTo(cfg.pad.l, y); ctx.lineTo(w - cfg.pad.r, y); ctx.stroke(); ctx.fillText(t + '%', 10, y); });
+      const data = items.filter(d => d.value > 0.0001); const n = data.length; if (!n) return; const barW = Math.max(12, (plotW - cfg.gap * (n - 1)) / n);
+      data.forEach((it, i) => {
+        const val = Math.max(0, Math.min(100, it.value)); const x = cfg.pad.l + i * (barW + cfg.gap); const hVal = (val / 100) * plotH; const y = cfg.pad.t + (plotH - hVal); const r = Math.min(cfg.radius, barW / 2, hVal / 2);
+        ctx.save(); ctx.shadowColor = 'rgba(208,162,74,.28)'; ctx.shadowBlur = 10; const g = ctx.createLinearGradient(0, y, 0, y + hVal); g.addColorStop(0, '#F1C56A'); g.addColorStop(.45, '#D0A24A'); g.addColorStop(1, '#8C5E1A'); ctx.fillStyle = g;
+        roundRect(ctx, x, y, barW, hVal, r); ctx.fill(); ctx.restore();
+        const label = val.toFixed(2) + '%'; ctx.textAlign = 'center';
+        if (hVal >= 28) { ctx.fillStyle = 'rgba(0,0,0,.22)'; roundRect(ctx, x + barW / 2 - 22, y + 4, 44, 18, 8); ctx.fill(); ctx.fillStyle = '#F7F3E8'; ctx.textBaseline = 'top'; ctx.fillText(label, x + barW / 2, y + 6); ctx.textBaseline = 'middle'; }
+        else {
+          const textW = Math.ceil(ctx.measureText(label).width); const rectW = textW + 10, rectH = 18; let lx = x + barW / 2 - rectW / 2, ly = y - rectH - 6; lx = Math.max(cfg.pad.l, Math.min(lx, w - cfg.pad.r - rectW)); ly = Math.max(cfg.pad.t + 2, ly);
+          ctx.fillStyle = 'rgba(0,0,0,.22)'; roundRect(ctx, lx, ly, rectW, rectH, 8); ctx.fill(); ctx.fillStyle = '#F7F3E8'; ctx.fillText(label, lx + rectW / 2, ly + rectH / 2);
+        }
+        ctx.fillStyle = '#C7A66A'; ctx.textBaseline = 'alphabetic'; ctx.fillText(it.label, x + barW / 2, cfg.pad.t + plotH + 18); ctx.textBaseline = 'middle';
+      });
+      function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath(); }
+    }
+  </script>
+
+  <script>
+    (function () {
+      const KEY = 'result_tab_pref';
+      const panels = { bazi: document.getElementById('tab-bazi'), liuyao: document.getElementById('tab-liuyao') };
+      const btns = document.querySelectorAll('.tabs-bar .tab-btn');
+
+      function show(tab) {
+        ['bazi', 'liuyao'].forEach(t => {
+          const el = panels[t]; if (!el) return;
+          el.classList.toggle('active', t === tab);
+          el.toggleAttribute('aria-hidden', t !== tab);
+        });
+        btns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+        localStorage.setItem(KEY, tab);
+        if (location.hash !== '#' + tab) history.replaceState(null, '', '#' + tab);
+      }
+
+      document.getElementById('tabsBar')?.addEventListener('click', e => {
+        const b = e.target.closest('.tab-btn'); if (!b) return;
+        show(b.dataset.tab);
+      });
+
+      const init = (location.hash || '').replace('#', '') || localStorage.getItem(KEY) || 'bazi';
+      show(init === 'liuyao' ? 'liuyao' : 'bazi');
+    })();
+  </script>
+
+  <!-- result.html 里（放在 </body> 前） -->
+  <script>
+    (function () {
+      const frame = document.getElementById('liuyaoFrame');
+
+      function setH(h) {
+        const min = 820;                 // 你原来的保底高度
+        frame.style.height = Math.max(h, min) + 'px';
+      }
+
+      window.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'YAOGUA_HEIGHT') {
+          setH(e.data.height);
+        }
+      });
+
+      // 兜底：iframe 首次 load 后也尝试拉取一次
+      frame.addEventListener('load', () => {
+        try {
+          const doc = frame.contentDocument || frame.contentWindow.document;
+          const h = Math.max(
+            doc.documentElement.scrollHeight,
+            doc.body.scrollHeight
+          );
+          setH(h);
+        } catch (err) { /* 跨域时忽略 */ }
+      });
+    })();
+  </script>
+
+
+
+</body>
+
+</html>

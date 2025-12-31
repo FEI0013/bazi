@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>AIRA · Analyzing the birth chart（Chat）</title>
+  <!DOCTYPE html>
+  <html lang="zh-CN">
+
+
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --panel: rgba(18, 18, 18, .65);
+      --border: rgba(255, 255, 255, .12);
+      --text: #E9E4D6;
+      --muted: #ceb47b;
+      --gold1: #f5c96c;
+      --gold2: #e2ab58;
+      --gold3: #7a5319;
+      --glow: rgba(212, 168, 86, 0.247);
+      --composer-h: 86px;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    /* 防止 iOS 聚焦自动缩放（要求字体 ≥16px） */
+    input,
+    select,
+    textarea,
+    button {
+      font-size: 16px;
+    }
+
+    /* 你项目里的几个关键控件再明确一下 */
+    .toolbar select,
+    .toolbar input,
+    .composer textarea,
+    .composer button {
+      font-size: 16px;
+    }
+
+    /* 让输入区贴合安全区，键盘弹出时不被遮住 */
+    .composer {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+
+    html,
+    body {
+      height: 100dvh;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.6 "Segoe UI", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      overflow: hidden;
+    }
+
+    a {
+      color: var(--gold1);
+      text-decoration: none
+    }
+
+    /* 顶栏（轻玻璃+微光） */
+    header.nav {
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px 0 18px;
+      z-index: 10;
+      background: linear-gradient(180deg, rgba(0, 0, 0, .75), rgba(0, 0, 0, .25));
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .35), 0 0 16px var(--glow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .brand .logo {
+      width: 24px;
+      height: 24px;
+      background: url('assets/favicon.ico') center/cover no-repeat;
+      border-radius: 4px;
+      box-shadow: 0 0 8px rgba(230, 196, 122, .4)
+    }
+
+    .title {
+      font-weight: 700;
+      color: var(--gold2)
+    }
+
+    .right {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    /* ▼ 把右上角按钮改成“下划线”风格（与 ENTER 一致） */
+    .btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: auto;
+      padding: 0 0 2px;
+      border: 0;
+      background: transparent;
+      border-radius: 0;
+      color: var(--gold1);
+    }
+
+    .btn::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -2px;
+      height: 2px;
+      background: linear-gradient(90deg, rgba(230, 196, 122, 0), rgba(230, 196, 122, .95), rgba(230, 196, 122, 0));
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform .26s ease;
+    }
+
+    .btn:hover::after {
+      transform: scaleX(1);
+    }
+
+    /* 布局：占满视口；外层不滚动 */
+    .layout {
+      position: absolute;
+      inset: 0 0 0 0;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 12px;
+      padding: 12px;
+      height: calc(100dvh - 64px);
+      min-height: 0;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, .35), 0 0 18px var(--glow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      min-height: 0;
+    }
+
+    /* 左侧摘要：自己滚动 */
+    .summary {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow: auto;
+      min-height: 0;
+    }
+
+    .summary h2 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      /* 让标题始终在摘要顶部，折叠/展开更好点 */
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 6px 0;
+      background: linear-gradient(180deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, 0));
+    }
+
+    .summary h2::after {
+      content: '▾';
+      /* 展开时的小箭头 */
+      margin-left: 8px;
+      color: var(--gold1);
+      font-weight: 900;
+    }
+
+    .summary h2::before {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 16px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, var(--gold1), rgba(208, 162, 74, .35));
+      box-shadow: 0 0 12px rgba(208, 162, 74, .45)
+    }
+
+    /* 折叠时：只保留标题，隐藏其它内容 */
+    .summary.collapsed> :not(h2) {
+      display: none;
+    }
+
+    .summary.collapsed {
+      overflow: visible;
+    }
+
+    /* 折叠态箭头改为向右 */
+    .summary.collapsed h2::after {
+      content: '▸';
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted)
+    }
+
+    .kv b {
+      color: var(--text);
+      font-weight: 600
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(208, 162, 74, .3);
+      background: rgba(208, 162, 74, .12);
+      color: #d9c18a;
+      font-size: 12px
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(208, 162, 74, .25);
+      background: rgba(255, 255, 255, .04);
+      color: #d9c18a;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+
+    .shuo {
+      color: #b17c00;
+      font-size: 12px;
+      position: relative;
+      /* 或者直接删掉 position 这一行 */
+      display: block;
+      margin-top: 12px;
+      /* 和上面的快速问题拉开距离 */
+      line-height: 1.4;
+    }
+
+
+    /* 右侧聊天：发送栏固定在卡片底部 */
+    .chat {
+      position: relative;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 140px 1fr 1fr 1fr;
+      gap: 8px;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(18, 18, 18, .40);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .05);
+    }
+
+    .toolbar select,
+    .toolbar input {
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.986);
+      color: var(--text);
+      padding: 0 10px
+    }
+
+    .messages {
+      padding: 14px;
+      padding-bottom: calc(var(--composer-h) + 18px);
+      overflow: auto;
+      min-height: 0;
+    }
+
+    .msg {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0
+    }
+
+    .msg .role {
+      width: 58px;
+      color: #c7a66a;
+      flex-shrink: 0;
+      font-size: 12px;
+      text-align: right;
+      padding-top: 4px
+    }
+
+    .bubble {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, .10);
+      background: rgba(255, 255, 255, .04);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04), 0 0 14px rgba(208, 162, 74, .08);
+    }
+
+    .me .bubble {
+      background: rgba(208, 162, 74, .1);
+      border-color: rgba(208, 162, 74, .3)
+    }
+
+    /* ▼ 黑金配色用于回答内容；并移除分割线 */
+    .bubble hr {
+      display: none;
+    }
+
+    .bubble h1,
+    .bubble h2,
+    .bubble h3 {
+      color: var(--gold2);
+    }
+
+    .bubble strong {
+      color: var(--gold1);
+    }
+
+    .bubble blockquote {
+      margin: .6em 0;
+      padding: .35em .8em;
+      border-left: 2px solid rgb(255, 185, 32);
+      background: rgba(230, 196, 122, .06);
+      border-radius: 8px;
+    }
+
+    .bubble ul,
+    .bubble ol {
+      padding-left: 1.25em
+    }
+
+    .bubble ul li::marker,
+    .bubble ol li::marker {
+      color: var(--gold1)
+    }
+
+    /* 浮动发送框（悬浮、毛玻璃、金色微光） */
+    .composer {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid rgba(252, 184, 57, 0.671);
+      background: rgba(20, 20, 20, .60);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius: 14px;
+      box-shadow: 0 8px 30px rgba(255, 153, 0, 0.486), 0 0 20px rgba(208, 162, 74, .18);
+    }
+
+    /* 输入区透明，和浮动框一体化 */
+    .composer textarea {
+      flex: 1;
+      min-height: 44px;
+      padding: 10px 12px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      resize: vertical;
+    }
+
+    /* 发送按钮维持黑金风 */
+    .composer button {
+      height: 40px;
+      padding: 0 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(208, 162, 74, .45);
+      background: linear-gradient(180deg, rgba(208, 162, 74, .22), rgba(208, 162, 74, .12));
+      color: var(--text);
+      box-shadow: 0 0 10px rgba(208, 162, 74, .15) inset;
+    }
+
+
+    /* 响应式 */
+    @media (max-width:1024px) {
+      .layout {
+        grid-template-columns: 280px 1fr
+      }
+    }
+
+    @media (max-width:860px) {
+      .layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+        /* ✅ 关键修复：让外层布局在手机端可以纵向滚动 */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .toolbar {
+        grid-template-columns: 1fr 1fr
+      }
+    }
+
+
+    .toolbar {
+      grid-template-columns: 1fr 1fr
+    }
+
+
+    @media (max-width:520px) {
+      .toolbar {
+        grid-template-columns: 1fr
+      }
+    }
+
+    /* 粒子画布置顶：不拦截点击，不遮内容（亮度叠加） */
+    #fx-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      display: block;
+    }
+
+    header.nav,
+    .layout {
+      position: relative;
+      z-index: 1
+    }
+
+    .nav-right-link {
+      position: fixed;
+      top: 18px;
+      right: 24px;
+      z-index: 1000;
+      color: #ffffff;
+      text-decoration: none;
+      font-size: .95rem;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      opacity: .92;
+      padding-bottom: 4px;
+      transition: opacity .25s ease, color .3s ease
+    }
+
+    .nav-right-link:hover {
+      opacity: 1;
+      color: #ffaa00
+    }
+
+    .nav-right-link::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, #ffcc66, #ff9900);
+      transform: scaleX(0);
+      transform-origin: right;
+      transition: transform .35s ease;
+      box-shadow: 0 0 12px rgba(255, 200, 100, .7)
+    }
+
+    .nav-right-link:hover::after {
+      transform: scaleX(1);
+      transform-origin: left
+    }
+
+    /* WebKit 滚动条：黑金渐变（#ffcc66 → #ff9900） */
+    .messages::-webkit-scrollbar,
+    .summary::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    .messages::-webkit-scrollbar-track,
+    .summary::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .messages::-webkit-scrollbar-thumb,
+    .summary::-webkit-scrollbar-thumb {
+      border-radius: 999px;
+      border: 2px solid rgba(0, 0, 0, .35);
+      background: linear-gradient(180deg, #ffcc66cc, #916d21d8);
+      box-shadow:
+        0 0 10px rgba(255, 200, 100, .55) inset,
+        0 0 8px rgba(255, 200, 100, .45);
+      transition: background .25s ease, box-shadow .25s ease;
+    }
+
+    .messages::-webkit-scrollbar-thumb:hover,
+    .summary::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #ffcc66cc, #916d21d8);
+      box-shadow:
+        0 0 12px rgba(255, 195, 83, 0.75) inset,
+        0 0 10px rgba(255, 183, 50, 0.65);
+    }
+
+    /* Firefox（不支持渐变，用接近色） */
+    .messages,
+    .summary {
+      scrollbar-width: thin;
+      scrollbar-color: #ffcc66cc transparent;
+    }
+
+    /* ====== 左右对话气泡 + 居中布局（不改 DOM/JS）====== */
+
+    /* 统一参数 */
+    :root {
+      --chat-max: clamp(1000px, 90vw, 1200px);
+      /* 聊天区最大宽度（消息 + 发送框） */
+      --role-w: 80px;
+      /* 左侧“角色”列宽 */
+      --gap: 10px;
+      /* 气泡与角色之间的间距 */
+    }
+
+    /* 消息列表作为纵向容器，并水平居中每条消息 */
+    .messages {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      /* 水平居中 .msg */
+    }
+
+    /* 每条消息：限制宽度 + 作为横向容器 */
+    .msg {
+      width: min(100%, var(--chat-max));
+      display: flex;
+      align-items: flex-start;
+      gap: var(--gap);
+      margin: 10px 0;
+    }
+
+    /* 角色名列：固定宽度，不收缩；左右对齐随气泡方向变化 */
+    .msg .role {
+      flex: 0 0 var(--role-w);
+      width: var(--role-w);
+      text-align: right;
+      color: #c7a66a;
+    }
+
+    .msg.me .role {
+      text-align: left;
+    }
+
+    /* 气泡：占满剩余宽度（容器 − 角色列 − 间距），并允许换行 */
+    .msg .bubble {
+      flex: 1 1 auto;
+      min-width: 0;
+      /* 防止被子元素撑破 */
+      max-width: calc(100% - var(--role-w) - var(--gap)) !important;
+      position: relative;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    /* 自己（我）在右侧：整条消息靠右，顺序反转（先气泡后角色） */
+    .msg.me {
+      justify-content: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    /* 我方气泡：黑金高亮 */
+    .msg.me .bubble {
+      background: rgba(208, 162, 74, .10);
+      border-color: rgba(208, 162, 74, .30);
+      box-shadow: 0 0 14px rgba(208, 162, 74, .08), inset 0 0 0 1px rgba(255, 255, 255, .04);
+    }
+
+    /* 对方（FEI）气泡：黑金低调 */
+    .msg:not(.me) .bubble {
+      background: rgba(255, 255, 255, .04);
+      border-color: rgba(255, 255, 255, .10);
+    }
+
+    /* 发送栏与消息同宽并水平居中 */
+    .chat .composer {
+      width: min(100%, var(--chat-max));
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
+      box-sizing: border-box;
+      /* 防止边框导致溢出 */
+    }
+
+    /* 窄屏占满，并适度收窄角色列 */
+    @media (max-width:860px) {
+      :root {
+        --chat-max: 100%;
+        --role-w: 56px;
+      }
+    }
+
+    /* 工具栏里的“密码 + 眼睛”容器 */
+    .toolbar .field.password {
+      position: relative;
+      height: 34px;
+    }
+
+    .toolbar .field.password input {
+      width: 100%;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, .986);
+      color: var(--text);
+      padding: 0 36px 0 10px;
+      /* 右侧给眼睛按钮留空间 */
+      box-sizing: border-box;
+    }
+
+    /* 眼睛按钮 */
+    .toolbar .field.password .eye {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      border: 1px solid rgba(208, 162, 74, .35);
+      background: linear-gradient(180deg, rgba(208, 162, 74, .22), rgba(208, 162, 74, .12));
+      color: var(--text);
+      cursor: pointer;
+      opacity: .9;
+    }
+
+    .toolbar .field.password .eye:hover {
+      opacity: 1;
+      box-shadow: 0 0 8px var(--glow);
+    }
+
+    .small {
+      font-size: 15px;
+      color: var(--muted);
+      opacity: 0.85;
+      letter-spacing: 0.05em;
+      line-height: 1.4;
+      margin-bottom: 13px;
+    }
+
+    /* ===== 折叠面板（黑金风格，贴合现有主题变量） ===== */
+    .collapsible {
+      border: 1px solid var(--border, rgba(255, 255, 255, .12));
+      background: var(--panel, rgba(18, 18, 18, .65));
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(255, 198, 76, .06);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .collapsible .head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+    }
+
+    .collapsible .head .title {
+      font-weight: 600;
+      letter-spacing: .2px;
+      filter: drop-shadow(0 0 6px rgba(214, 160, 60, .25));
+    }
+
+    .collapsible .head .summary {
+      margin-left: auto;
+      opacity: .7;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 55%;
+    }
+
+    .collapsible .head .chev {
+      width: 10px;
+      height: 10px;
+      margin-left: 8px;
+      transition: transform .22s ease;
+      border-right: 2px solid var(--gold1, #E6C47A);
+      border-bottom: 2px solid var(--gold1, #E6C47A);
+      transform: rotate(45deg);
+    }
+
+    .collapsible[data-collapsed="1"] .head .chev {
+      transform: rotate(-135deg);
+    }
+
+    .collapsible .body {
+      padding: 12px 14px 14px;
+      border-top: 1px solid rgba(255, 198, 76, .12);
+      background: linear-gradient(180deg, rgba(255, 198, 76, .06), transparent 30%);
+    }
+
+    .collapsible[data-collapsed="1"] .body {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="fx-canvas"></canvas>
+
+  <header class="nav">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <div class="title">Analyze your birth chart（Chat）</div>
+    </div>
+    <div class="right">
+      <a class="nav-right-link" href="result.html">返回结果</a>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- 左：命盘摘要 -->
+    <section class="card summary" id="summary">
+      <h2>命盘摘要</h2>
+      <div class="kv">
+        <div>阳历</div>
+        <div><b id="sSolar">—</b></div>
+      </div>
+      <div class="kv">
+        <div>农历</div>
+        <div><b id="sLunar">—</b></div>
+      </div>
+      <div class="kv">
+        <div>八字</div>
+        <div><b id="sEight">—</b></div>
+      </div>
+      <div class="kv">
+        <div>地点</div>
+        <div><span id="sLoc" class="small">—</span></div>
+      </div>
+      <div class="hr"></div>
+      <div>
+        <div class="small">五行分布</div>
+        <div id="sWuxing" class="chips"></div>
+      </div>
+      <div>
+        <div class="small">十神占比（Top3）</div>
+        <div id="sShishen" class="chips"></div>
+      </div>
+      <div class="hr"></div>
+      <div>
+        <div class="small">快速问题</div>
+        <div class="chips" id="quick">
+          <div class="chip" data-q="overall">总体格局解读</div>
+          <div class="chip" data-q="balance">五行强弱与调候建议</div>
+          <div class="chip" data-q="ten">十神性格与优势短板</div>
+          <div class="chip" data-q="career">事业/学业/财运</div>
+          <div class="chip" data-q="love">感情/婚姻</div>
+          <div class="chip" data-q="health">健康注意</div>
+          <div class="chip" data-q="fortune">近三年流年看点</div>
+          <div class="chip" data-q="luck">当前大运与建议</div>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="shuo">说明：APIkey_VX:19002000113-页面所有内容仅供娱乐</div>
+    </section>
+
+    <!-- 右：聊天与设置（保持原结构与脚本） -->
+    <section class="card chat">
+      <!-- 折叠面板：模型与密钥（把原 toolbar 包进来） -->
+      <div id="modelPanel" class="collapsible" data-collapsed="0">
+        <div class="head" id="modelPanelHead">
+          <span class="title">Models & Keys</span>
+          <small id="modelSummary" class="summary"></small>
+          <i class="chev" aria-hidden="true"></i>
+        </div>
+        <div class="body" id="modelPanelBody">
+          <!-- 你的原始 toolbar 保持不变，整体移到这里 -->
+          <div class="toolbar">
+            <select id="provider">
+              <option value="openai">OpenAI</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="deepseek">DeepSeek</option>
+              <option value="qwen">Qwen</option>
+              <option value="proxy">自有代理</option>
+            </select>
+            <select id="model"></select>
+            <div class="field password">
+              <input id="apiKey" type="password" autocomplete="off"
+                placeholder="API Key（OpenAI/DeepSeek/OpenRouter/Qwen 的 sk-...）" />
+              <button type="button" id="apiKeyToggle" class="eye" aria-label="显示/隐藏 API Key">👁</button>
+            </div>
+            <input id="proxy" type="text" placeholder="选“自有代理”时填：/api/openai 或完整 URL" />
+          </div>
+        </div>
+      </div>
+
+      <div id="messages" class="messages"></div>
+
+      <div class="composer">
+        <textarea id="input" placeholder="输入你的问题，或点击左侧快捷问题…"></textarea>
+        <button id="send">发送</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function pickFullText(json) {
+      return (
+        json?.choices?.[0]?.message?.content ||  // OpenAI/DeepSeek 非流式
+        json?.choices?.[0]?.delta?.content ||  // 保险：有些也会给 delta
+        json?.output_text ||  // 一些国产/代理封装字段
+        json?.data?.[0]?.content ||  // 备选
+        ''
+      );
+    }
+    /************** 读取 result（兼容多字段名） **************/
+    function readBaziResult() {
+      let raw = localStorage.getItem('baziResult') ?? sessionStorage.getItem('baziResult') ?? '';
+      if (raw && typeof raw === 'string') { const i = raw.indexOf('{'); if (i > 0) raw = raw.slice(i); }
+      let obj = {}; try { obj = raw ? JSON.parse(raw) : {} } catch (e) { console.warn('baziResult 解析失败', e, raw) }
+      const src = obj.data || obj.payload || obj.result || obj;
+      const unify = (o) => {
+        if (!o || typeof o !== 'object') return {}; return {
+          ...o,
+          meta: o.meta || {},
+          wuXing: o.wuXing || o.wuxing || o.fiveElements || o['五行分布'] || null,
+          shiShen: o.shiShen || o.shishen || o.tenGods || o['十神占比'] || null,
+        }
+      };  // 保留 meta 供摘要优先读取
+      return unify(src);
+    }
+    const state = { result: readBaziResult(), history: [] };
+
+    /************** 左侧摘要（修复阳历） **************/
+    function renderSummary() {
+      const r = state.result || {};
+      const m = r.meta || {};
+
+      const solar = m.solarDate || r.standardSolarDate || r.stdSolarDate || r.trueSolarDate || r.solarDate || '';
+      const lunar = m.lunarDate || r.lunarDate || '';
+      const ec = m.eightChar || r.eightChar || {};
+      const birth = m.birthLocation || r.birthLocation || '';
+      const curr = m.currentLocation || r.currentLocation || '';
+
+      sSolar.textContent = solar || '—';
+      sLunar.textContent = lunar || '—';
+      sEight.textContent = [ec.year, ec.month, ec.day, ec.time].filter(Boolean).join(' ') || '—';
+      sLoc.textContent = [birth, curr].filter(Boolean).join(' · ') || '—';
+
+      sWuxing.innerHTML = '';
+      if (r.wuXing) {
+        Object.entries(r.wuXing).forEach(([k, v]) => {
+          const el = document.createElement('div'); el.className = 'pill';
+          const num = parseFloat(v); el.textContent = `${k} ${isFinite(num) ? num.toFixed(2) + '%' : String(v)}`;
+          sWuxing.appendChild(el);
+        });
+      }
+
+      sShishen.innerHTML = '';
+      if (r.shiShen) {
+        Object.entries(r.shiShen)
+          .map(([k, v]) => [k, isFinite(+v) ? +v : parseFloat(String(v).replace('%', ''))])
+          .filter(([, n]) => isFinite(n))
+          .sort((a, b) => b[1] - a[1]).slice(0, 3)
+          .forEach(([k, n]) => {
+            const el = document.createElement('div'); el.className = 'pill'; el.textContent = `${k} ${n.toFixed(2)}%`; sShishen.appendChild(el);
+          });
+      }
+    }
+    renderSummary();
+
+
+    /************** 提示词模板（原样） **************/
+    function buildContextJSON(r) {
+      const safe = {
+        meta: { solarDate: (r.meta && r.meta.solarDate) || r.solarDate || '', lunarDate: (r.meta && r.meta.lunarDate) || r.lunarDate || '', eightChar: (r.meta && r.meta.eightChar) || r.eightChar || {}, birthLocation: (r.meta && r.meta.birthLocation) || r.birthLocation || '', currentLocation: (r.meta && r.meta.currentLocation) || r.currentLocation || '' },
+        wuXing: r.wuXing || {}, shiShen: r.shiShen || {},
+        geJu: r.geJu || '', zodiac: r.zodiac || '', naYin: r.naYin || {},
+        daYun: Array.isArray(r.daYun) ? r.daYun.slice(0, 8) : [],
+        liuNian: Array.isArray(r.liuNian) ? r.liuNian.slice(0, 12) : []
+      };
+      try { return JSON.stringify(safe); } catch { return '{}' }
+    }
+    // function buildSystemPrompt() {
+    //   return [
+    //     '你是一名才华横溢、妙趣横生的八字命理分析师，似星象中的诗者，基于我提供的结构化数据（见“数据”JSON），为非专业读者织就一幅可行之锦绣建议，点亮其人生之诗篇。',
+    //     '遵循之法：',
+    //     '- **Markdown** 格式输出，二级标题（##）领衔，项目符号点缀；首列 3~5 条【关键结论】，如晨星指引。',
+    //     '- 唯依数据推演，若数据阙如，须明言假设（如“假设日主为某五行”），谨慎铺陈，似水流渐进。',
+    //     '- 语调温润有趣，避绝对之言或惊心之语，禁涉医疗、法律、投资之论，唯献生活之策。',
+    //     '- 五行强弱之判：>35% 为强势，<15% 为弱势，0% 为缺；相生相克可调和，似自然之韵。',
+    //     '- 十神解读以占比 Top3 为重，析“性格特质、核心能力、潜在风险、改进之道”，如画卷之三才。',
+    //     '- 若论大运/流年，须明示时窗（如“2025-2027”），赠针对之策，似时辰之钟。',
+    //     '- 语言之风：专业而不枯燥，诗意若云烟，喻如“命盘如山川大河，需修枝护流”。',
+    //     '输出之结构：\n## 关键结论\n- ...\n## 五行平衡与调候\n...\n## 十神洞察\n...\n## 事业与学业\n...\n## 情感与人际\n...\n## 健康与生活方式\n...\n## 大运与流年趋势\n...\n## 30天行动计划\n- ...'
+    //   ].join('\n');
+    // }
+    // function buildSystemPrompt() {
+    //   return [
+    //     '你是一名才华横溢、妙趣横生的八字命理分析师，似星象中的诗者，基于我提供的结构化数据（见“数据”JSON），为非专业读者织就一幅可行之锦绣建议，点亮其人生之诗篇。',
+    //     '遵循之法：',
+    //     '- **Markdown** 格式输出，二级标题（##）领衔，项目符号点缀；首列 3~5 条【关键结论】，如晨星指引。',
+    //     '- 唯依数据推演，若数据阙如，须明言假设（如“假设日主为某五行”），谨慎铺陈，似水流渐进。',
+    //     '- 语调温润有趣，避绝对之言或惊心之语，禁涉医疗、法律、投资之论，唯献生活之策。',
+    //     '- 五行强弱之判：>35% 为强势，<15% 为弱势，0% 为缺；相生相克可调和，似自然之韵。',
+    //     '- 十神解读以占比 Top3 为重，析“性格特质、核心能力、潜在风险、改进之道”，如画卷之三才。',
+    //     '- 若论大运/流年，须明示时窗（如“2025-2027”），赠针对之策，似时辰之钟。',
+    //     '- 语言之风：专业而不枯燥，诗意若云烟，喻如“命盘如山川大河，需修枝护流”。',
+    //     '输出之结构：\n## 关键结论\n- ...\n## 五行平衡与调候\n...\n## 十神洞察\n...\n## 事业与学业\n...\n## 情感与人际\n...\n## 健康与生活方式\n...\n## 大运与流年趋势\n...\n## 30天行动计划\n- ...'
+    //   ].join('\n');
+    // }
+
+    /************** Markdown 渲染（支持流式） **************/
+    function escapeHtml(str) { return str.replace(/[&<>"']/g, s => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[s])); }
+    function miniMarkdown(md) {
+      md = md.replace(/\r\n?/g, '\n');
+      md = md.replace(/```([\s\S]*?)```/g, (m, code) => '<pre><code>' + escapeHtml(code) + '</code></pre>');
+      md = md.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>').replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>')
+        .replace(/^####\s+(.+)$/gm, '<h4>$1</h4>').replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+        .replace(/^##\s+(.+)$/gm, '<h2>$1</h2>').replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+      md = md.replace(/^>\s?(.+)$/gm, '<blockquote>$1</blockquote>');
+      md = md.replace(/^(?:-\s.+\n?)+/gm, b => {
+        const items = b.trim().split(/\n/).map(l => l.replace(/^[-*]\s+/, '')).map(escapeHtml).map(t => '<li>' + t + '</li>').join('');
+        return '<ul>' + items + '</ul>';
+      });
+      md = md.replace(/^(?:\d+\.\s.+\n?)+/gm, b => {
+        const items = b.trim().split(/\n/).map(l => l.replace(/^\d+\.\s+/, '')).map(escapeHtml).map(t => '<li>' + t + '</li>').join('');
+        return '<ol>' + items + '</ol>';
+      });
+      md = md.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>').replace(/`([^`]+)`/g, '<code>$1</code>');
+      md = md.replace(/^(?!<h\d|<ul>|<ol>|<pre>|<blockquote>)(.+)$/gm, (m, p) => '<p>' + p + '</p>');
+      return md;
+    }
+    async function toHTML(md) {
+      if (!window.marked) {
+        try {
+          await Promise.all([
+            new Promise(r => { var s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js'; s.onload = r; document.head.appendChild(s); }),
+            new Promise(r => { var s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js'; s.onload = r; document.head.appendChild(s); })
+          ]);
+        } catch (e) { }
+      }
+      if (window.marked && window.DOMPurify) { return window.DOMPurify.sanitize(window.marked.parse(md)); }
+      return miniMarkdown(md);
+    }
+
+    var $msgs = document.getElementById('messages');
+    function addMsg(role, text, isMd) {
+      var row = document.createElement('div'); row.className = 'msg ' + (role === '我' ? 'me' : '');
+      row.innerHTML = '<div class="role">' + role + '</div><div class="bubble"></div>';
+      var bubble = row.querySelector('.bubble');
+      if (isMd) { toHTML(text || '').then(html => { bubble.innerHTML = html; }); }
+      else { bubble.textContent = text || ''; }
+      $msgs.appendChild(row); $msgs.scrollTop = $msgs.scrollHeight; return bubble;
+    }
+
+    // 快捷问题
+    quick.addEventListener('click', function (e) {
+      var chip = e.target.closest('.chip'); if (!chip) return;
+      var kind = chip.getAttribute('data-q'); var prompt = (TEMPLATES[kind] || (() => ''))(state.result);
+      input.value = prompt; send.click();
+    });
+
+    /************** Provider/Model 下拉 **************/
+    var $provider = document.getElementById('provider');
+    var $model = document.getElementById('model');
+    var MODEL_OPTIONS = {
+      openai: [
+        { v: 'gpt-5', l: 'gpt-5（OpenAI）' },
+        { v: 'gpt-5-mini', l: 'gpt-5-mini（OpenAI）' },
+        { v: 'gpt-4o', l: 'gpt-4o（OpenAI）' },
+        { v: 'gpt-4o-mini', l: 'gpt-4o-mini（OpenAI）' }
+      ],
+      openrouter: [
+        { v: 'openai/gpt-5', l: 'gpt-5（OpenRouter）' },
+        { v: 'openai/gpt-4o', l: 'gpt-4o（OpenRouter）' },
+        { v: 'openai/gpt-4o-mini', l: 'gpt-4o-mini（OpenRouter）' }
+      ],
+      deepseek: [
+        { v: 'deepseek-chat', l: 'deepseek-chat（通用）' },
+        { v: 'deepseek-reasoner', l: 'deepseek-reasoner（强推理）' }
+      ],
+      qwen: [
+        { v: 'qwen-plus', l: 'qwen-plus（Qwen）' },
+        { v: 'qwen-max', l: 'qwen-max（Qwen）' },
+        { v: 'qwen2.5-72b-instruct', l: 'qwen2.5-72b-instruct（Qwen）' },
+        { v: 'qwen2.5-32b-instruct', l: 'qwen2.5-32b-instruct（Qwen）' },
+        { v: 'qwen2.5-7b-instruct', l: 'qwen2.5-7b-instruct（Qwen）' }
+      ],
+      proxy: [
+        { v: 'gpt-5', l: '自有代理：gpt-5' },
+        { v: 'gpt-4o', l: '自有代理：gpt-4o' }
+      ]
+    };
+    function fillModels(provider) {
+      $model.innerHTML = '';
+      (MODEL_OPTIONS[provider] || MODEL_OPTIONS.openai).forEach(function (opt) {
+        var o = document.createElement('option'); o.value = opt.v; o.textContent = opt.l; $model.appendChild(o);
+      });
+    }
+    $provider.value = localStorage.getItem('FEI_PROVIDER') || 'qwen';
+    fillModels($provider.value);
+    $model.value = localStorage.getItem('FEI_MODEL') || $model.value;
+    $provider.addEventListener('change', function () { fillModels($provider.value); localStorage.setItem('FEI_PROVIDER', $provider.value); localStorage.setItem('FEI_MODEL', $model.value); });
+    $model.addEventListener('change', function () { localStorage.setItem('FEI_MODEL', $model.value); });
+
+    /************** 恢复 Key/代理配置 **************/
+    apiKey.value = sessionStorage.getItem('FEI_API_KEY') || '';
+    proxy.value = localStorage.getItem('FEI_PROXY') || '';
+    apiKey.addEventListener('change', function () { sessionStorage.setItem('FEI_API_KEY', apiKey.value.trim()); });
+    proxy.addEventListener('change', function () { localStorage.setItem('FEI_PROXY', proxy.value.trim()); });
+
+    // 眼睛开关：显示/隐藏 API Key
+    const $apiKeyToggle = document.getElementById('apiKeyToggle');
+    if ($apiKeyToggle) {
+      $apiKeyToggle.addEventListener('click', () => {
+        const shown = apiKey.type === 'text';
+        apiKey.type = shown ? 'password' : 'text';
+        $apiKeyToggle.textContent = shown ? '👁' : '👁‍🗨';
+      });
+    }
+    function pickFullText(json) {
+      return (
+        json?.choices?.[0]?.message?.content ||
+        json?.choices?.[0]?.delta?.content ||
+        json?.output_text ||
+        json?.data?.[0]?.content ||
+        ''
+      );
+    }
+
+
+    /************** 发送 **************/
+    send.addEventListener('click', async function () {
+      var provider = $provider.value;
+      var model = $model.value;
+
+      var text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';               // ✅ 发送后立即清空
+      input.style.height = '';        // 可选：如果做了自适应高度，顺便还原
+
+      var key = apiKey.value.trim();
+      var pxy = proxy.value.trim();
+
+      addMsg('我', text);
+      var aiBubble = addMsg('FEI', '', true);
+      var buf = '';
+      var flush = function () { toHTML(buf).then(function (html) { aiBubble.innerHTML = html; $msgs.scrollTop = $msgs.scrollHeight; }); };
+      var raf = null;
+      var onToken = function (t) { buf += t; if (!raf) { raf = requestAnimationFrame(function () { flush(); raf = null; }); } };
+
+      try {
+        await streamChat({ provider: provider, model: model, apiKey: key, proxy: pxy, system: buildSystemPrompt(), user: text, onToken: onToken });
+      } catch (err) { console.error(err); aiBubble.innerHTML = '<code>' + (err && err.message ? err.message : String(err)) + '</code>'; }
+    });
+
+
+    // ENTER 发送（Shift+Enter 换行；中文输入法候选时不触发）
+    const ta = document.getElementById('input');
+    let composing = false;
+    ta.addEventListener('compositionstart', () => composing = true);
+    ta.addEventListener('compositionend', () => composing = false);
+
+    ta.addEventListener('keydown', function (e) {
+      if (e.isComposing || composing) return;        // 正在中文拼写
+      if ((e.key === 'Enter' || e.keyCode === 13) && !e.shiftKey) {
+        e.preventDefault();                           // 阻止换行
+        document.getElementById('send').click();      // 触发发送
+      }
+    });
+
+
+
+
+    /************** 各 Provider 实现（含 Qwen） **************/
+    async function streamChat(opts) {
+      var provider = opts.provider, model = opts.model, apiKey = opts.apiKey, proxy = opts.proxy, system = opts.system, user = opts.user, onToken = opts.onToken;
+      var messages = [{ role: 'system', content: system }, { role: 'user', content: user }];
+      // —— 各 provider 的非流式兜底调用（当 res.body.getReader 不可用时用）——
+      const nonStreamCallers = {
+        openrouter: async () => {
+          const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + apiKey,
+              'HTTP-Referer': location.origin.replace(/[^\x00-\x7F]/g, ''),
+              'X-Title': 'FEI-Chat'
+            },
+            body: JSON.stringify({ model, messages, temperature: 0.7, stream: false })
+          });
+          const j = await r.json(); return pickFullText(j);
+        },
+        deepseek: async () => {
+          const r = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+            body: JSON.stringify({ model, messages, temperature: 0.7, stream: false })
+          });
+          const j = await r.json(); return pickFullText(j);
+        },
+        openai: async () => {
+          const r = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+            body: JSON.stringify({ model, messages, temperature: 0.7, stream: false })
+          });
+          const j = await r.json(); return pickFullText(j);
+        },
+        qwen: async () => {
+          const r = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+            body: JSON.stringify({ model, messages, temperature: 0.7, stream: false })
+          });
+          const j = await r.json(); return pickFullText(j);
+        },
+        proxy: async () => {
+          const r = await fetch(proxy, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model, system, user, stream: false })
+          });
+          const j = await r.json(); return pickFullText(j);
+        }
+      };
+
+
+      if (provider === 'openrouter') {
+        if (!apiKey) throw new Error('缺少 OpenRouter API Key（sk-or-v1-...）');
+        var res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream',
+            'Authorization': 'Bearer ' + apiKey,
+            'HTTP-Referer': location.origin.replace(/[^\x00-\x7F]/g, ''),
+            'X-Title': 'FEI-Chat'
+          },
+          body: JSON.stringify({ model: model, messages: messages, temperature: 0.7, stream: true })
+        });
+        if (!res.ok) { var t1 = await res.text(); throw new Error('OpenRouter ' + res.status + ': ' + t1); }
+        await readSSE(res, onToken, nonStreamCallers.openrouter); return;
+      }
+
+      if (provider === 'deepseek') {
+        if (!apiKey) throw new Error('缺少 DeepSeek API Key（sk-...）');
+        var res2 = await fetch('https://api.deepseek.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream', 'Authorization': 'Bearer ' + apiKey },
+          body: JSON.stringify({ model: model, messages: messages, temperature: 0.7, stream: true })
+        });
+        if (!res2.ok) { var t2 = await res2.text(); throw new Error('DeepSeek ' + res2.status + ': ' + t2); }
+        await readSSE(res2, onToken, nonStreamCallers.deepseek); return;
+      }
+
+      if (provider === 'openai') {
+        if (!apiKey) throw new Error('缺少 OpenAI API Key（sk-...）');
+        var res3 = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream', 'Authorization': 'Bearer ' + apiKey },
+          body: JSON.stringify({ model: model, messages: messages, temperature: 0.7, stream: true })
+        });
+        if (!res3.ok) { var t3 = await res3.text(); throw new Error('OpenAI ' + res3.status + ': ' + t3); }
+        await readSSE(res3, onToken, nonStreamCallers.openai); return;
+      }
+
+      /* ✅ Qwen（DashScope 兼容模式） */
+      if (provider === 'qwen') {
+        if (!apiKey) throw new Error('缺少 Qwen（DashScope）API Key');
+        const url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+        const resQ = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream', 'Authorization': 'Bearer ' + apiKey },
+          body: JSON.stringify({ model: model, messages: messages, temperature: 0.7, stream: true })
+        });
+        if (!resQ.ok) { const t = await resQ.text(); throw new Error('Qwen ' + resQ.status + ': ' + t); }
+        await readSSE(resQ, onToken, nonStreamCallers.qwen); return;
+      }
+
+      // 自有代理
+      if (!proxy) throw new Error('请选择“自有代理”并填写代理地址');
+      var res4 = await fetch(proxy, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: model, system: system, user: user, stream: true }) });
+      if (!res4.ok) throw new Error('代理 ' + res4.status);
+      await readSSE(res4, onToken, nonStreamCallers.proxy);
+    }
+
+    // 通用 SSE 读取
+    async function readSSE(res, onToken, fallbackNonStream) {
+      // iOS Safari 等环境：res.body 可能为 null，无法流式
+      if (!res.body || !res.body.getReader) {
+        if (typeof fallbackNonStream === 'function') {
+          try {
+            const txt = await fallbackNonStream();
+            if (txt) onToken(txt);
+          } catch (e) {
+            console.error('non-stream fallback error:', e);
+          }
+        }
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop(); // 保留未完整的一段
+
+        for (let i = 0; i < parts.length; i++) {
+          const line = parts[i].trim();
+          if (!line) continue;
+          const dataLine = line.startsWith('data:') ? line.slice(5).trim() : line;
+          if (dataLine === '[DONE]') return;
+          try {
+            const json = JSON.parse(dataLine);
+            const delta =
+              json?.choices?.[0]?.delta?.content ||
+              json?.choices?.[0]?.message?.content ||
+              '';
+            if (delta) onToken(delta);
+          } catch (e) {
+            // 单行 JSON 解析失败忽略
+          }
+        }
+      }
+    }
+
+    // 初始欢迎
+    (function () {
+      addMsg('FEI', '你好！我已读取你的命盘数据（见左侧摘要）。你可以直接发问，或点击左侧快捷问题。', true);
+      input.value = TEMPLATES.overall(state.result);
+    })();
+  </script>
+  <script>
+    // —— 摘要折叠/展开 —— 
+    (function () {
+      const $sum = document.getElementById('summary');
+      const $title = $sum && $sum.querySelector('h2');
+      if (!$sum || !$title) return;
+
+      // 恢复上次状态
+      try {
+        if (localStorage.getItem('FEI_SUMMARY_COLLAPSED') === '1') {
+          $sum.classList.add('collapsed');
+          $title.setAttribute('aria-expanded', 'false');
+        } else {
+          $title.setAttribute('aria-expanded', 'true');
+        }
+      } catch (e) { }
+
+      // 点击标题切换
+      $title.addEventListener('click', () => {
+        const collapsed = $sum.classList.toggle('collapsed');
+        $title.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        try { localStorage.setItem('FEI_SUMMARY_COLLAPSED', collapsed ? '1' : '0'); } catch (e) { }
+      });
+    })();
+  </script>
+
+
+  <!-- 轻量鼠标粒子（置顶、不会遮挡内容） -->
+  <script>
+    (function () {
+      const cvs = document.getElementById('fx-canvas');
+      const ctx = cvs.getContext('2d');
+      let W = 0, H = 0, DPR = 1;
+      function resize() {
+        DPR = Math.max(1, devicePixelRatio || 1);
+        W = innerWidth; H = innerHeight;
+        cvs.width = W * DPR; cvs.height = H * DPR;
+        cvs.style.width = W + 'px'; cvs.style.height = H + 'px';
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+      addEventListener('resize', resize); resize();
+
+      const COUNT = 120, SIZE = 3, SPEED = 0.5;
+      const ps = Array.from({ length: COUNT }, () => ({ x: W / 2, y: H / 2, vx: (Math.random() - 0.5) * SPEED, vy: (Math.random() - 0.5) * SPEED }));
+
+      let mx = W / 2, my = H / 2;
+      addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; }, { passive: true });
+      addEventListener('touchmove', e => { const t = e.touches[0]; if (t) { mx = t.clientX; my = t.clientY; } }, { passive: true });
+
+      function step() {
+        ctx.clearRect(0, 0, W, H);
+
+        const g = ctx.createRadialGradient(mx, my, 0, mx, my, 150);
+        g.addColorStop(0, 'rgba(230,196,122,.25)');
+        g.addColorStop(1, 'rgba(230,196,122,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(mx, my, 240, 0, Math.PI * 2); ctx.fill();
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,214,131,.20)';
+        ps.forEach(p => {
+          const ax = (mx - p.x) * 0.0006, ay = (my - p.y) * 0.0006;
+          p.vx = (p.vx + ax) * 0.985;
+          p.vy = (p.vy + ay) * 0.985;
+          p.x += p.vx; p.y += p.vy;
+          if (p.x < 0 || p.x > W) p.vx *= -1;
+          if (p.y < 0 || p.y > H) p.vy *= -1;
+          ctx.beginPath(); ctx.arc(p.x, p.y, SIZE, 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.restore();
+
+        requestAnimationFrame(step);
+      }
+      step();
+    })();
+  </script>
+
+  <script>
+    (function () {
+      const comp = document.querySelector('.composer');
+      const ta = document.getElementById('input');
+      function setComposerH() {
+        if (!comp) return;
+        const h = comp.getBoundingClientRect().height;
+        document.documentElement.style.setProperty('--composer-h', (h + 20) + 'px');
+      }
+      window.addEventListener('resize', setComposerH);
+      if (ta) ta.addEventListener('input', setComposerH);
+      setComposerH();
+    })();
+  </script>
+
+  <script>
+    (function () {
+      const panel = document.getElementById('modelPanel');
+      if (!panel) return;
+      const head = document.getElementById('modelPanelHead');
+      const summary = document.getElementById('modelSummary');
+
+      // 记住折叠状态；移动端默认折叠，桌面默认展开
+      const KEY = 'chat.modelPanel.collapsed';
+      const saved = localStorage.getItem(KEY);
+      const defaultCollapsed = window.innerWidth < 768 ? '1' : '0';
+      panel.dataset.collapsed = (saved ?? defaultCollapsed);
+
+      function setCollapsed(v) {
+        panel.dataset.collapsed = v ? '1' : '0';
+        localStorage.setItem(KEY, panel.dataset.collapsed);
+      }
+      head.addEventListener('click', () => {
+        setCollapsed(panel.dataset.collapsed !== '1' ? 1 : 0);
+      });
+
+      // 摘要（提供商 / 模型 / KEY 是否填写）
+      function updateSummary() {
+        const providerEl = document.querySelector('#provider');
+        const modelEl = document.querySelector('#model');
+        const keyEl = document.querySelector('#apiKey');
+        const items = [];
+        if (providerEl) {
+          const txt = providerEl.options[providerEl.selectedIndex]?.text || providerEl.value || '';
+          if (txt) items.push(txt);
+        }
+        if (modelEl) {
+          const txt = modelEl.options[modelEl.selectedIndex]?.text || modelEl.value || '';
+          if (txt) items.push(txt);
+        }
+        if (keyEl) { items.push(keyEl.value && keyEl.value.length > 6 ? '•KEY' : '未填KEY'); }
+        summary.textContent = items.filter(Boolean).join(' · ');
+      }
+      updateSummary();
+      document.addEventListener('change', (e) => {
+        if (e.target && (e.target.id === 'provider' || e.target.id === 'model')) updateSummary();
+      });
+      document.addEventListener('input', (e) => {
+        if (e.target && (e.target.id === 'apiKey')) updateSummary();
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      const meta = document.querySelector('meta[name=viewport]');
+      if (!meta) return;
+
+      const normalContent = 'width=device-width, initial-scale=1, viewport-fit=cover';
+      const lockedContent = 'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover';
+
+      // 记录滚动位置，收起键盘后回到原位
+      let lastScrollY = 0;
+
+      function lockZoom() { meta.setAttribute('content', lockedContent); }
+      function unlockZoom() { meta.setAttribute('content', normalContent); }
+
+      // iOS 聚焦时：临时禁止缩放，避免自动放大；记录滚动
+      document.addEventListener('focusin', (e) => {
+        if (e.target.matches('input, textarea, select')) {
+          lastScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+          lockZoom();
+        }
+      });
+
+      // 失焦时：恢复缩放，并把页面滚回原位置
+      document.addEventListener('focusout', (e) => {
+        if (e.target.matches('input, textarea, select')) {
+          unlockZoom();
+          // 等键盘完全收起再滚回，iOS 需要一点延时
+          setTimeout(() => { window.scrollTo(0, lastScrollY); }, 50);
+        }
+      });
+
+      // 额外：阻止双击放大（可选）
+      let lastTouch = 0;
+      document.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (now - lastTouch < 300) e.preventDefault();
+        lastTouch = now;
+      }, { passive: false });
+    })();
+  </script>
+  <script>
+    /* ========= 合参接收 & 提示词覆盖（新增，不改你原代码） ========= */
+    (function () {
+      // 与各页保持一致的 key / 频道名
+      const BAZI_RESULT_KEY = 'bazi:lastResult:v1';
+      const LIUYAO_RESULT_KEY = 'bazi:liuyao:v1';
+      const CHANNEL_NAME = 'bazi-channel';
+
+      // 内部暂存
+      const store = { bazi: null, liuyao: null };
+
+      // —— 命盘数据适配：转成你左侧摘要使用的结构（state.result 兼容）
+      function adaptBaziToState(bz) {
+        if (!bz || !bz.meta) return null;
+        return {
+          meta: {
+            solarDate: bz.meta.solarDate || '',
+            lunarDate: bz.meta.lunarDate || '',
+            eightChar: bz.meta.eightChar || {},
+            birthLocation: bz.meta.birthLocation || '',
+            currentLocation: bz.meta.currentLocation || ''
+          },
+          wuXing: bz.wuXing || {},
+          shiShen: bz.shiShen || {},
+          geJu: bz.geJu || '',
+          zodiac: bz.zodiac || '',
+          naYin: bz.naYin || {},
+          daYun: Array.isArray(bz.daYun) ? bz.daYun : [],
+          liuNian: Array.isArray(bz.liuNian) ? bz.liuNian : []
+        };
+      }
+
+      // —— 初始化：从 localStorage 读一遍
+      function initRead() {
+        try {
+          const rawBz = JSON.parse(localStorage.getItem(BAZI_RESULT_KEY) || 'null');
+          if (rawBz) {
+            store.bazi = rawBz;
+            // 刷新左侧摘要：把 state.result 替换为新命盘，并重渲染
+            if (window.state) {
+              const adapted = adaptBaziToState(rawBz);
+              if (adapted) { window.state.result = adapted; if (typeof renderSummary === 'function') renderSummary(); }
+            }
+          }
+        } catch { }
+
+        try {
+          const rawLy = JSON.parse(localStorage.getItem(LIUYAO_RESULT_KEY) || 'null');
+          if (rawLy) store.liuyao = rawLy;
+        } catch { }
+
+        renderIncomingBadges();
+      }
+
+      // —— 监听广播：实时接收命盘/六爻
+      try {
+        const bc = new BroadcastChannel(CHANNEL_NAME);
+        bc.onmessage = (e) => {
+          const { type, payload } = e.data || {};
+          if (type === 'bazi_result_updated') {
+            store.bazi = payload;
+            localStorage.setItem(BAZI_RESULT_KEY, JSON.stringify(payload));
+            if (window.state) {
+              const adapted = adaptBaziToState(payload);
+              if (adapted) { window.state.result = adapted; if (typeof renderSummary === 'function') renderSummary(); }
+            }
+          }
+          if (type === 'liuyao_result_updated') {
+            store.liuyao = payload;
+            localStorage.setItem(LIUYAO_RESULT_KEY, JSON.stringify(payload));
+          }
+          renderIncomingBadges();
+        };
+      } catch { }
+
+      // —— UI：输入框上方显示徽标
+      function renderIncomingBadges() {
+        const host = document.getElementById('incomingTips') || (() => {
+          const n = document.createElement('div');
+          n.id = 'incomingTips';
+          n.style.cssText = 'margin:8px 0 4px; display:flex; gap:8px; flex-wrap:wrap;';
+          const composer = document.querySelector('.composer');
+          composer?.parentNode?.insertBefore(n, composer);
+          return n;
+        })();
+        host.innerHTML = '';
+        if (store.bazi) { const s = document.createElement('span'); s.className = 'chip chip-ok'; s.textContent = '已接收：命盘'; host.appendChild(s); }
+        if (store.liuyao) { const s = document.createElement('span'); s.className = 'chip chip-ok'; s.textContent = '已接收：六爻'; host.appendChild(s); }
+      }
+      // 徽标样式（与现有黑金风格一致）
+      (function () {
+        const style = document.createElement('style');
+        style.textContent = '.chip{padding:4px 8px;border-radius:999px;border:1px solid rgba(255,198,76,.25);font-size:12px;opacity:.9}.chip-ok{background:rgba(255,198,76,.08)}';
+        document.head.appendChild(style);
+      })();
+
+      // —— 安全打包命盘 JSON（保留你系统提示里要用的“数据(JSON)”）
+      function packBaziJSON() {
+        try {
+          if (!window.state || !state.result) return '{}';
+          const r = state.result;
+          const safe = {
+            meta: {
+              solarDate: r.meta?.solarDate || '',
+              lunarDate: r.meta?.lunarDate || '',
+              eightChar: r.meta?.eightChar || {},
+              birthLocation: r.meta?.birthLocation || '',
+              currentLocation: r.meta?.currentLocation || ''
+            },
+            wuXing: r.wuXing || {},
+            shiShen: r.shiShen || {},
+            geJu: r.geJu || '',
+            zodiac: r.zodiac || '',
+            naYin: r.naYin || {},
+            daYun: Array.isArray(r.daYun) ? r.daYun.slice(0, 8) : [],
+            liuNian: Array.isArray(r.liuNian) ? r.liuNian.slice(0, 12) : []
+          };
+          return JSON.stringify(safe);
+        } catch { return '{}'; }
+      }
+
+      // —— 把六爻转成简洁摘要（供系统提示词拼接）
+      function packLiuyaoText() {
+        const ly = store.liuyao || null;
+        if (!ly) return '（未接收六爻数据）';
+        const arr = [];
+        arr.push(`主题：${ly.question || ''}｜时间：${ly.time || ''}`);
+        arr.push(`本卦 / 变卦：${ly.本卦 || ''}${ly.变卦 ? ' → ' + ly.变卦 : ''}`);
+        arr.push(`用神：${ly.用神 || '自动'}｜流派：${ly.流派 || ''}`);
+        if (ly.世应) arr.push(`世应：${ly.世应}`);
+        if (Array.isArray(ly.动爻) && ly.动爻.length) arr.push(`动爻：${ly.动爻.join('、')}`);
+        if (ly.六亲强弱 && typeof ly.六亲强弱 === 'object') {
+          const kins = Object.entries(ly.六亲强弱).map(([k, v]) => `${k}${v}`).join('、');
+          if (kins) arr.push(`六亲强弱：${kins}`);
+        }
+        if (Array.isArray(ly.神煞) && ly.神煞.length) arr.push(`神煞：${ly.神煞.join('、')}`);
+        return arr.join('\n- ');
+      }
+
+      // —— 覆盖 buildSystemPrompt（保持你的原风格要求 + 自动带入命盘/六爻）
+      window.buildSystemPrompt = function () {
+        // 你的原“风格规范”段落（保持不变）
+        const stylePart = [
+          '你是一名才华横溢、妙趣横生的八字命理分析师，似星象中的诗者，基于我提供的结构化数据（见“数据”JSON），为非专业读者织就一幅可行之锦绣建议，点亮其人生之诗篇。',
+          '遵循之法：',
+          '- **Markdown** 格式输出，二级标题（##）领衔，项目符号点缀；首列 3~5 条【关键结论】，如晨星指引。',
+          '- 唯依数据推演，若数据阙如，须明言假设（如“假设日主为某五行”），谨慎铺陈，似水流渐进。',
+          '- 语调温润有趣，避绝对之言或惊心之语，禁涉医疗、法律、投资之论，唯献生活之策。',
+          '- 五行强弱之判：>35% 为强势，<15% 为弱势，0% 为缺；相生相克可调和，似自然之韵。',
+          '- 十神解读以占比 Top3 为重，析“性格特质、核心能力、潜在风险、改进之道”，如画卷之三才。',
+          '- 若论大运/流年，须明示时窗（如“2025-2027”），赠针对之策，似时辰之钟。',
+          '- 语言之风：专业而不枯燥，诗意若云烟，喻如“命盘如山川大河，需修枝护流”。',
+          '输出之结构：\n## 关键结论\n- ...\n## 五行平衡与调候\n...\n## 十神洞察\n...\n## 事业与学业\n...\n## 情感与人际\n...\n## 健康与生活方式\n...\n## 大运与流年趋势\n...\n## 30天行动计划\n- ...'
+        ].join('\n');
+
+        // 自动拼入命盘 JSON & 六爻摘要（合参）
+        const baziJSON = packBaziJSON();
+        const liuyaoTxt = packLiuyaoText();
+
+        return [
+          stylePart,
+          '\n——\n【数据(JSON)】\n' + baziJSON,
+          '\n【六爻摘要】\n- ' + liuyaoTxt,
+          '\n请先基于六爻作出结论，再用命盘校正与补充；若任一数据缺失，请说明并继续回答。'
+        ].join('\n');
+      };
+
+      // 首次载入时读取一次（兜底）
+      initRead();
+    })();
+  </script>
+
+
+
+</body>
+
+</html>
